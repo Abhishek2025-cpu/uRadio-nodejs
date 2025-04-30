@@ -1,0 +1,20 @@
+{
+  "name": "uradio_backend",
+  "version": "1.0.0",
+  "description": "radio backend nodejs",
+  "homepage": "https://github.com/Abhishek2025-cpu/uradio_backend#readme",
+  "bugs": {
+    "url": "https://github.com/Abhishek2025-cpu/uradio_backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Abhishek2025-cpu/uradio_backend.git"
+  },
+  "license": "ISC",
+  "author": "AbhishekPearl",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
