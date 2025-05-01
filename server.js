@@ -73,7 +73,7 @@ app.post('/api/voice-message', upload.single('audio'), async (req, res) => {
       name,
       contact,
       address,
-      audioPath: audio.path
+     // audioPath: audio.path
     });
 
     await newMessage.save();
