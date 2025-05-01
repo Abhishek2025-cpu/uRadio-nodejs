@@ -65,7 +65,7 @@ app.post('/api/voice-message', upload.single('audio'), async (req, res) => {
     const { name, contact, address } = req.body;
     const audio = req.file;
 
-    if (!name || !contact || !address || !audio) {
+    if (!name || !contact || !address) {
       return res.status(400).json({ error: 'All fields including audio are required.' });
     }
 
