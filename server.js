@@ -67,11 +67,11 @@ const upload = multer({
 // POST API to upload voice message and form data
 app.post('/api/voice-message', upload.single('audio'), async (req, res) => {
   try {
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
+
     const { name, contact, address } = req.body;
     const audioPath = req.file?.path;
-    console.log('BODY:', req.body);
-console.log('FILE:', req.file);
-
 
     if (!name || !contact || !address || !audioPath) {
       return res.status(400).json({ message: 'All fields including audio are required.' });
@@ -82,10 +82,11 @@ console.log('FILE:', req.file);
 
     res.status(201).json({ message: 'Voice message saved successfully.' });
   } catch (error) {
-    console.error('Error saving voice message:', error);
-    res.status(500).json({ message: 'Internal server error.' });
+    console.error('❌ Server Error:', error);
+    res.status(500).json({ message: 'Internal server error.', error: error.message });
   }
 });
+
 
 // GET API to fetch all voice messages
 app.get('/api/voice-messages', async (req, res) => {
