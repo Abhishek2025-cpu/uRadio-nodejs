@@ -40,53 +40,36 @@ const voiceMessageSchema = new mongoose.Schema({
 
 const VoiceMessage = mongoose.model('VoiceMessage', voiceMessageSchema); // ✅ UPPERCASE
 
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = './uploads/audio';
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `audio_${Date.now()}${ext}`;
-    cb(null, filename);
-  }
-});
-
-const upload = multer({ 
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowed = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/webm'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only audio files are allowed.'));
-    }
-  }
-});
-
-// POST: Upload audio + form data
-app.post('/api/voice-message', upload.single('audio'), async (req, res) => {
+app.post('/api/voice-message', async (req, res) => {
   try {
-    console.log('➡️ Incoming Request');
-    console.log('BODY:', req.body);
-    console.log('FILE:', req.file);
+    console.log('➡️ Incoming Raw Audio Request');
+    const { name, contact, address, audioBase64, extension } = req.body;
 
-    const { name, contact, address } = req.body;
-    const audioPath = req.file?.path;
-
-    if (!name || !contact || !address || !audioPath) {
-      console.log('❗ Missing fields');
-      return res.status(400).json({ message: 'All fields including audio are required.' });
+    if (!name || !contact || !address || !audioBase64 || !extension) {
+      return res.status(400).json({ message: 'All fields including audioBase64 and extension are required.' });
     }
 
-    const newMsg = new VoiceMessage({ name, contact, address, audioPath });
-    await newMsg.save();
+    // Decode and save the audio file
+    const uploadDir = './uploads/audio';
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    const filename = `audio_${Date.now()}.${extension}`;
+    const filePath = path.join(uploadDir, filename);
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    fs.writeFileSync(filePath, audioBuffer);
+
+    // Save to DB
+    const newMessage = new VoiceMessage({
+      name,
+      contact,
+      address,
+      audioPath: filePath
+    });
+    await newMessage.save();
 
     res.status(201).json({ message: '✅ Voice message saved successfully.' });
   } catch (err) {
-    console.error('❌ Error in POST /api/voice-message:', err);
+    console.error('❌ Error saving voice message:', err);
     res.status(500).json({ message: 'Internal server error.', error: err.message });
   }
 });
