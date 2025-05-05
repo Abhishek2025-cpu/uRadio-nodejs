@@ -78,7 +78,7 @@ app.post('/api/voice-message', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ message: 'All fields including audio are required.' });
     }
 
-    const newMessage = new voiceMessage({ name, contact, address, audioPath });
+    const newMessage = new VoiceMessage({ name, contact, address, audioPath });
     await newMessage.save();
 
     res.status(201).json({ message: 'Voice message saved successfully.' });
