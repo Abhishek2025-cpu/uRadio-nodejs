@@ -67,7 +67,8 @@ app.post('/api/voice-message', async (req, res) => {
     });
     await newMessage.save();
 
-    res.status(201).json({ message: '✅ Voice message saved successfully.' });
+
+res.status(201).json({ message: '✅ Voice message saved successfully.' });
   } catch (err) {
     console.error('❌ Error saving voice message:', err);
     res.status(500).json({ message: 'Internal server error.', error: err.message });
