@@ -86,6 +86,123 @@ app.get('/api/voice-messages', async (req, res) => {
   }
 });
 
+
+// models/Stream.js
+const mongoose = require('mongoose');
+
+const streamSchema = new mongoose.Schema({
+  name: String,
+  channel_id: Number,
+  type: String,
+  source_type: String,
+  real_type: String,
+  free: Boolean,
+  blocked: Boolean,
+  deleted: Boolean,
+  maintained: Boolean,
+  live: {
+    application_instance: Object,
+    bytes_in: Object,
+    bytes_out: Object,
+    bytes_in_rate: Object,
+    bytes_out_rate: Object,
+    server_name: Object,
+    total_connections: Object,
+  },
+  restriction: {
+    access_country: Object,
+    allow_domain: Object,
+    authorize_country: Object,
+    exception_ip: Object,
+    forbidden_ip: Object,
+    player_token: Object,
+    shared_key: Object,
+  },
+  streams: [Object],
+  players: [Object],
+  recording_status: String,
+  updated_at: Date,
+});
+
+const Stream = mongoose.model('Stream', streamSchema);
+
+app.post('/streams', async (req, res) => {
+  try {
+    const newStream = new Stream(req.body);
+    await newStream.save();
+    res.status(201).json({ message: 'Stream created', stream: newStream });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Get all streams
+app.get('/streams', async (req, res) => {
+  try {
+    const streams = await Stream.find();
+    res.json(streams);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Get a single stream by ID
+app.get('/streams/:id', async (req, res) => {
+  try {
+    const stream = await Stream.findById(req.params.id);
+    if (!stream) return res.status(404).json({ message: 'Stream not found' });
+    res.json(stream);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Update a stream (toggle or edit)
+app.put('/streams/:id', async (req, res) => {
+  try {
+    const updatedStream = await Stream.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updated_at: new Date() },
+      { new: true }
+    );
+    if (!updatedStream) return res.status(404).json({ message: 'Stream not found' });
+    res.json({ message: 'Stream updated', stream: updatedStream });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Delete a stream
+app.delete('/streams/:id', async (req, res) => {
+  try {
+    await Stream.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Stream deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Toggle Block / Maintain / Delete
+app.patch('/streams/:id/toggle', async (req, res) => {
+  try {
+    const updates = {};
+    const allowed = ['blocked', 'deleted', 'maintained', 'free'];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
+    }
+    updates.updated_at = new Date();
+
+    const updatedStream = await Stream.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (!updatedStream) return res.status(404).json({ message: 'Stream not found' });
+    res.json({ message: 'Stream updated', stream: updatedStream });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Port
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
