@@ -30,6 +30,14 @@ mongoose.connect(uri, {
 .then(() => console.log("✅ MongoDB connected successfully"))
 .catch(error => console.error("❌ MongoDB connection failed:", error.message));
 
+// Make sure folders exist
+const imageDir = path.join(__dirname, 'uploads/images');
+const audioDir = path.join(__dirname, 'uploads/audios');
+
+if (!fs.existsSync(imageDir)) fs.mkdirSync(imageDir, { recursive: true });
+if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+
+
 // Schema & Model APIs for Voice Messages 5-5-2025
 const voiceMessageSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -217,16 +225,20 @@ const Article = mongoose.model('Article', articleSchema);
 
 // Multer Storage Setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const folder = file.mimetype.startsWith('audio/')
-      ? 'uploads/audios'
-      : 'uploads/images';
-
-    fs.mkdirSync(folder, { recursive: true });
-    cb(null, folder);
+  destination: function (req, file, cb) {
+    // Route files based on MIME type
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, 'uploads/images');
+    } else if (file.mimetype.startsWith('audio/')) {
+      cb(null, 'uploads/audios');
+    } else {
+      cb(new Error('Unsupported file type'), false);
+    }
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
   }
 });
 
@@ -235,7 +247,9 @@ const upload = multer({ storage });
 // API: Publish Article
 app.post(
   '/api/admin/publish-article',
-  upload.fields([{ name: 'images' }, { name: 'audios' }]),
+  upload.fields([  { name: 'images', maxCount: 10 },
+    { name: 'audios', maxCount: 5 }]),
+
   async (req, res) => {
     try {
       const { title, content, author, isPublished } = req.body;
