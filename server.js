@@ -17,6 +17,7 @@ const server = http.createServer(app);
 // Make sure folders exist
 
 
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     if (file.mimetype.startsWith('image/')) {
@@ -33,7 +34,7 @@ const storage = multer.diskStorage({
     cb(null, filename);
   }
 });
-
+const upload = multer({ storage });
 
 // Mongo URI
 const uri = process.env.MONGO_URI || "mongodb+srv://abhisheks:ijgha3sbMNK0Hfsu@cluster0.ul6vz.mongodb.net/Uradio?retryWrites=true&w=majority&appName=Cluster0";
