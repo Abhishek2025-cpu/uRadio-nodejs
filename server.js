@@ -30,7 +30,7 @@ mongoose.connect(uri, {
 .then(() => console.log("✅ MongoDB connected successfully"))
 .catch(error => console.error("❌ MongoDB connection failed:", error.message));
 
-// Schema & Model
+// Schema & Model APIs for Voice Messages 5-5-2025
 const voiceMessageSchema = new mongoose.Schema({
   name: { type: String, required: true },
   contact: { type: String, required: true },
@@ -87,7 +87,7 @@ app.get('/api/voice-messages', async (req, res) => {
 });
 
 
-
+//live streaming schema and api 07-05-2025
 
 const streamSchema = new mongoose.Schema({
   name: String,
@@ -200,6 +200,100 @@ app.patch('/streams/:id/toggle', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+// Mongoose Schema
+const articleSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  content: { type: String, required: true }, // HTML content
+  images: [String],
+  audios: [String],
+  author: { type: String },
+  isPublished: { type: Boolean, default: false },
+  publishedAt: { type: Date, default: Date.now }
+});
+
+const Article = mongoose.model('Article', articleSchema);
+
+// Multer Storage Setup
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folder = file.mimetype.startsWith('audio/')
+      ? 'uploads/audios'
+      : 'uploads/images';
+
+    fs.mkdirSync(folder, { recursive: true });
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
+
+// API: Publish Article
+app.post(
+  '/api/admin/publish-article',
+  upload.fields([{ name: 'images' }, { name: 'audios' }]),
+  async (req, res) => {
+    try {
+      const { title, content, author, isPublished } = req.body;
+
+      const images = req.files['images']?.map(file => file.path) || [];
+      const audios = req.files['audios']?.map(file => file.path) || [];
+
+      const article = new Article({
+        title,
+        content,
+        images,
+        audios,
+        author,
+        isPublished: isPublished === 'true'
+      });
+
+      await article.save();
+
+      res.status(201).json({
+        success: true,
+        message: 'Article published successfully!',
+        article
+      });
+    } catch (error) {
+      console.error('Error publishing article:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish article',
+        error: error.message
+      });
+    }
+  }
+);
+
+// GET: All Articles (optionally filter published)
+app.get('/api/articles', async (req, res) => {
+  try {
+    const { onlyPublished } = req.query;
+
+    const filter = onlyPublished === 'true' ? { isPublished: true } : {};
+
+    const articles = await Article.find(filter).sort({ publishedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: articles.length,
+      articles
+    });
+  } catch (error) {
+    console.error('Error fetching articles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch articles',
+      error: error.message
+    });
+  }
+});
+
 
 
 // Port
