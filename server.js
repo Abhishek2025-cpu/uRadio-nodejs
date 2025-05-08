@@ -16,8 +16,7 @@ app.use(cors({ origin: '*', credentials: true }));
 const server = http.createServer(app);
 // Make sure folders exist
 
-fs.mkdirSync(imageDir, { recursive: true });
-fs.mkdirSync(audioDir, { recursive: true });
+
 
 // Multer storage logic
 const storage = multer.diskStorage({
