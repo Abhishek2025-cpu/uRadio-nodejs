@@ -14,6 +14,33 @@ app.use(bodyParser.json());
 app.use(cors({ origin: '*', credentials: true }));
 
 const server = http.createServer(app);
+// Make sure folders exist
+
+fs.mkdirSync(imageDir, { recursive: true });
+fs.mkdirSync(audioDir, { recursive: true });
+
+// Multer storage logic
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    if (file.mimetype.startsWith('images/')) {
+      cb(null, imageDir);
+    } else if (file.mimetype.startsWith('audios/')) {
+      cb(null, audioDir);
+    } else {
+      cb(new Error('Invalid file type'), false);
+    }
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const filename = Date.now() + '-' + Math.round(Math.random() * 1e9) + ext;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({ storage });
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mongo URI
 const uri = process.env.MONGO_URI || "mongodb+srv://abhisheks:ijgha3sbMNK0Hfsu@cluster0.ul6vz.mongodb.net/Uradio?retryWrites=true&w=majority&appName=Cluster0";
@@ -210,105 +237,58 @@ app.patch('/streams/:id/toggle', async (req, res) => {
 });
 
 
-// Mongoose Schema
-const articleSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  content: { type: String, required: true }, // HTML content
+const ArticleSchema = new mongoose.Schema({
+  title: String,
+  content: String,
+  author: String,
+  isPublished: Boolean,
+  publishedAt: { type: Date, default: Date.now },
   images: [String],
-  audios: [String],
-  author: { type: String },
-  isPublished: { type: Boolean, default: false },
-  publishedAt: { type: Date, default: Date.now }
+  audios: [String]
 });
 
-const Article = mongoose.model('Article', articleSchema);
+const Article = mongoose.model('Article', ArticleSchema);
 
-// Multer Storage Setup
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Route files based on MIME type
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, 'uploads/images');
-    } else if (file.mimetype.startsWith('audio/')) {
-      cb(null, 'uploads/audios');
-    } else {
-      cb(new Error('Unsupported file type'), false);
-    }
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, uniqueSuffix + ext);
+// POST API to publish article
+app.post('/api/admin/publish-article', upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'audios', maxCount: 5 }
+]), async (req, res) => {
+  try {
+    const { title, content, author, isPublished } = req.body;
+
+    const imagePaths = (req.files.images || []).map(f => 'uploads/images/' + f.filename);
+    const audioPaths = (req.files.audios || []).map(f => 'uploads/audios/' + f.filename);
+
+    const article = new Article({
+      title,
+      content,
+      author,
+      isPublished: isPublished === 'true',
+      images: imagePaths,
+      audios: audioPaths
+    });
+
+    await article.save();
+    res.status(201).json({ success: true, message: "Article published successfully!", article });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-const upload = multer({ storage });
-
-// API: Publish Article
-app.post(
-  '/api/admin/publish-article',
-  upload.fields([  { name: 'images', maxCount: 10 },
-    { name: 'audios', maxCount: 5 }]),
-
-  async (req, res) => {
-    try {
-      const { title, content, author, isPublished } = req.body;
-
-      const images = req.files['images']?.map(file => file.path) || [];
-      const audios = req.files['audios']?.map(file => file.path) || [];
-
-      const article = new Article({
-        title,
-        content,
-        images,
-        audios,
-        author,
-        isPublished: isPublished === 'true'
-      });
-
-      await article.save();
-
-      res.status(201).json({
-        success: true,
-        message: 'Article published successfully!',
-        article
-      });
-    } catch (error) {
-      console.error('Error publishing article:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to publish article',
-        error: error.message
-      });
-    }
-  }
-);
-
-// GET: All Articles (optionally filter published)
+// GET API to fetch articles
 app.get('/api/articles', async (req, res) => {
   try {
-    const { onlyPublished } = req.query;
-
-    const filter = onlyPublished === 'true' ? { isPublished: true } : {};
-
-    const articles = await Article.find(filter).sort({ publishedAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: articles.length,
-      articles
-    });
-  } catch (error) {
-    console.error('Error fetching articles:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch articles',
-      error: error.message
-    });
+    const onlyPublished = req.query.onlyPublished === 'true';
+    const query = onlyPublished ? { isPublished: true } : {};
+    const articles = await Article.find(query).sort({ publishedAt: -1 });
+    res.json({ success: true, count: articles.length, articles });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
-
 
 // Port
 const PORT = process.env.PORT || 8080;
