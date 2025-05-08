@@ -235,10 +235,7 @@ const ArticleSchema = new mongoose.Schema({
 const Article = mongoose.model('Article', ArticleSchema);
 
 // POST API to publish article
-app.post('/api/admin/publish-article', upload.fields([
-  { name: 'images', maxCount: 10 },
-  { name: 'audios', maxCount: 5 }
-]), async (req, res) => {
+app.post('/api/admin/publish-article', upload_file, async (req, res) => {
   try {
     const { title, content, author, isPublished } = req.body;
 
