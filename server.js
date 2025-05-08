@@ -17,13 +17,11 @@ const server = http.createServer(app);
 // Make sure folders exist
 
 
-
-// Multer storage logic
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    if (file.mimetype.startsWith('images/')) {
+    if (file.mimetype.startsWith('image/')) {
       cb(null, imageDir);
-    } else if (file.mimetype.startsWith('audios/')) {
+    } else if (file.mimetype.startsWith('audio/')) {
       cb(null, audioDir);
     } else {
       cb(new Error('Invalid file type'), false);
@@ -36,10 +34,6 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
-
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mongo URI
 const uri = process.env.MONGO_URI || "mongodb+srv://abhisheks:ijgha3sbMNK0Hfsu@cluster0.ul6vz.mongodb.net/Uradio?retryWrites=true&w=majority&appName=Cluster0";
