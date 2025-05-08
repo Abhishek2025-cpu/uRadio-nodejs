@@ -17,30 +17,16 @@ const server = http.createServer(app);
 // Make sure folders exist
 
 
+app.use('/images', express.static('uploads')); // images= Access Key
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, imageDir);
-    } else if (file.mimetype.startsWith('audio/')) {
-      cb(null, audioDir);
-    } else {
-      cb(new Error('Invalid file type'), false);
-    }
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const filename = Date.now() + '-' + Math.round(Math.random() * 1e9) + ext;
-    cb(null, filename);
-  }
-});
-const upload = multer({ storage });
+
+
+
 
 // Mongo URI
 const uri = process.env.MONGO_URI || "mongodb+srv://abhisheks:ijgha3sbMNK0Hfsu@cluster0.ul6vz.mongodb.net/Uradio?retryWrites=true&w=majority&appName=Cluster0";
 
-// Serve audio uploads statically
-app.use('/uploads', express.static('uploads'));
+
 
 // MongoDB Connection
 mongoose.connect(uri, {
@@ -51,12 +37,17 @@ mongoose.connect(uri, {
 .then(() => console.log("✅ MongoDB connected successfully"))
 .catch(error => console.error("❌ MongoDB connection failed:", error.message));
 
-// Make sure folders exist
-const imageDir = path.join(__dirname, 'uploads/images');
-const audioDir = path.join(__dirname, 'uploads/audios');
-
-if (!fs.existsSync(imageDir)) fs.mkdirSync(imageDir, { recursive: true });
-if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+const upload_file = multer({
+  storage:multer.diskStorage({
+      destination: function(req,file,cb){
+          cb(null,'uploads');
+      },
+      filename:function(req,file,cb){
+          let fileName = 'FILE' + Number(new Date())+ path.extname(file.originalname);
+          cb(null,fileName)
+      },
+  }),
+}).single('uploaded_file');
 
 
 // Schema & Model APIs for Voice Messages 5-5-2025
@@ -154,11 +145,11 @@ const streamSchema = new mongoose.Schema({
 
 const Stream = mongoose.model('Stream', streamSchema);
 
-app.post('/streams', async (req, res) => {
+app.post('/streams', upload_file, async (req, res) => {
   try {
     const newStream = new Stream(req.body);
     await newStream.save();
-    res.status(201).json({ message: 'Stream created', stream: newStream });
+    let file_name = req.file.filename; res.status(201).json({ message: 'Stream created', stream: newStream });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -230,7 +221,7 @@ app.patch('/streams/:id/toggle', async (req, res) => {
   }
 });
 
-
+//news articles schema and api 07-05-2025
 const ArticleSchema = new mongoose.Schema({
   title: String,
   content: String,
